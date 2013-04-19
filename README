@@ -1,0 +1,13 @@
+==================
+linguini.py README
+==================
+
+linguini.py is a Python implementation of the language identifier system
+described in [1]. Some portions of the implementation were recycled
+from my off-the-shelf language identifer `langid.py`.
+
+Contact
+-------
+Marco Lui <saffsd@gmail.com>
+http://www.csse.unimelb.edu.au/~mlui/
+
