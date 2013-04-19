@@ -8,3 +8,6 @@ TOP_DOC_FREQ = 15000 # number of tokens to consider for each order
 NUM_BUCKETS = 64 # number of buckets to use in k-v pair generation
 CHUNKSIZE = 50 # maximum size of chunk (number of files tokenized - less = less memory use)
 SAMPLE_SIZE = 140 # size of sample in bytes for sampling-based tokenization
+
+# featureselect.py
+TOKENS_PER_ORDER = 15000 # number of tokens to consider for each order

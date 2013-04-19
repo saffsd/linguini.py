@@ -11,6 +11,7 @@ from defaults import TRAIN_PROP, MIN_DOMAIN
 from defaults import MAX_NGRAM_ORDER, TOP_DOC_FREQ, NUM_BUCKETS, CHUNKSIZE, SAMPLE_SIZE
 from index import main as c_index
 from tokenize import main as c_tokenize
+from featureselect import main as c_featsel
 
 def main():
   parser = argparse.ArgumentParser()
@@ -67,12 +68,27 @@ def main():
       help="maximum n-gram order (for ngram tokenization)")
   tk_g.add_argument("--order", type=int, default=4,
       help="n-gram order (for Prager tokenization)")
+  tk_g.add_argument("--words", action="store_true",
+      help="include words (for Prager tokenization)")
 
   group = parser.add_argument_group('sampling')
   group.add_argument("--sample_size", type=int, default=SAMPLE_SIZE,
       help="size of sample for sampling-based tokenization")
   group.add_argument("--sample_count", type=int, default=None,
       help="number of samples for sampling-based tokenization")
+
+  #####################
+  # Feature Selection #
+  #####################
+  fs_p = subp.add_parser('featsel', help = "perform feature selection")
+  fs_p.set_defaults(func=c_featsel)
+
+  fs_p.add_argument("-f","--features", metavar='FEATURE_FILE', 
+      help="output features to FEATURE_FILE")
+  fs_p.add_argument("-k", type=float, default=0.4,
+      help="feature inclusion threshold")
+
+  fs_p.add_argument("model", metavar='MODEL_DIR', help="read index and produce output in MODEL_DIR")
 
   #####
 
