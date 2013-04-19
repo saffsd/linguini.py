@@ -101,7 +101,7 @@ class PragerTokenizer(object):
       # non-whitespace-segmented languages and non-language data.
       for word in str.split(seq):
         if word and len(word) != self.n and len(word) <= self.word_maxlen:
-          yield tuple(word)
+          yield word
 
     # Set up N iterators in order to generate n-grams
     t = tee(seq, self.n)
@@ -116,7 +116,7 @@ class PragerTokenizer(object):
       # (unless the only whitespace is at the end of the word, as 
       # explicitly allowed by Prager)
       if not any(str.isspace(t) for t in token[:-1]):
-        yield token
+        yield ''.join(token)
 
 
 
@@ -159,11 +159,14 @@ def pass_tokenize(chunk_items):
   term_lng_freq = defaultdict(lambda: defaultdict(int))
   term_dom_freq = defaultdict(lambda: defaultdict(int))
 
+  total_bytes = 0
+
   for domain_id, lang_id, path in chunk_items:
     with open(path) as f:
+      text = f.read()
+      total_bytes += len(text)
       if __sample_count:
         # sampling tokenization
-        text = f.read()
         poss = max(1,len(text) - __sample_size) # possibe start locations
         count = min(poss, __sample_count) # reduce number of samples if document is too short
         offsets = random.sample(xrange(poss), count)
@@ -175,7 +178,7 @@ def pass_tokenize(chunk_items):
           
       else:
         # whole-document tokenization
-        tokenset = set(extractor(f.read()))
+        tokenset = set(extractor(text))
         for token in tokenset:
           term_lng_freq[token][lang_id] += 1
           term_dom_freq[token][domain_id] += 1
@@ -191,7 +194,7 @@ def pass_tokenize(chunk_items):
   for f in b_freq_lang + b_freq_domain:
     os.close(f)
 
-  return len(term_lng_freq)
+  return total_bytes
 
 def build_index(items, tokenizer, outdir, buckets=NUM_BUCKETS, jobs=None, chunksize=CHUNKSIZE, sample_count=None, sample_size=None):
   """
@@ -229,8 +232,12 @@ def build_index(items, tokenizer, outdir, buckets=NUM_BUCKETS, jobs=None, chunks
     else:
       logger.info("whole-document tokenization")
 
-    for i, keycount in enumerate(pass_tokenize_out):
-      logger.debug("tokenized chunk (%d/%d) [%d keys]" % (i+1,chunk_count, keycount))
+    total_bytes = 0
+    for i, chunk_bytes in enumerate(pass_tokenize_out):
+      logger.debug("tokenized chunk (%d/%d) [%d bytes]" % (i+1,chunk_count, chunk_bytes))
+      total_bytes += chunk_bytes
+
+  logger.info("tokenized a total of {0} MB".format(total_bytes / 1024 / 1024))
 
   complete = True
 
@@ -262,8 +269,8 @@ def main(args):
     tokenizer = Scanner.from_file(args.scanner)
     logger.info("using provided scanner: ", args.scanner)
   elif args.prager:
-    tokenizer = PragerTokenizer(args.order, use_words=True)
-    logger.info("using str.split to tokenize")
+    tokenizer = PragerTokenizer(args.order, use_words=args.words)
+    logger.info("using Prager tokenization: order[{0}] use_words[{1}]".format(args.order, args.words))
   else:
     tokenizer = NGramTokenizer(args.min_order,args.max_order)
     logger.info("using n-gram tokenizer: order {0}-{1}".format(args.min_order, args.max_order))
