@@ -38,8 +38,12 @@ or implied, of the copyright holder.
 import cPickle
 import os, sys, argparse 
 import array
+import logging
+
 from collections import deque, defaultdict
 from common import read_features
+
+logger = logging.getLogger(__name__)
 
 class Scanner(object):
   alphabet = map(chr, range(1<<8))
@@ -190,7 +194,7 @@ def build_scanner(features):
   feat_index = index(features)
 
   # Build the actual scanner
-  print "building scanner"
+  logger.debug("building scanner for {0} features".format(len(features)))
   scanner = Scanner(features)
   tk_nextmove, raw_output = scanner.__getstate__()
 
@@ -211,14 +215,9 @@ def index(seq):
   """
   return dict((k,v) for (v,k) in enumerate(seq))
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("input", metavar="INPUT", help="build a scanner for INPUT. If input is a directory, read INPUT/LDfeats")
-  parser.add_argument("-o","--output", help="output scanner to OUTFILE", metavar="OUTFILE")
-  args = parser.parse_args()
-
+def main(args):
   if os.path.isdir(args.input):
-    input_path = os.path.join(args.input, 'LDfeats')
+    input_path = os.path.join(args.input, 'PragerFeats')
   else:
     input_path = args.input
 
@@ -228,8 +227,8 @@ if __name__ == "__main__":
     output_path = input_path + '.scanner'
 
   # display paths
-  print "input path:", input_path
-  print "output path:", output_path
+  logger.info("input path: {0}".format(input_path))
+  logger.info("output path: {0}".format(output_path))
 
   nb_features = read_features(input_path)
   tk_nextmove, tk_output = build_scanner(nb_features)
@@ -237,4 +236,4 @@ if __name__ == "__main__":
 
   with open(output_path, 'w') as f:
     cPickle.dump(scanner, f)
-  print "wrote scanner to {0}".format(output_path)
+  logger.info("wrote scanner to {0}".format(output_path))
