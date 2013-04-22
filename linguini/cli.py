@@ -7,11 +7,13 @@ Marco Lui, April 2013
 import argparse
 import logging
 
-from defaults import TRAIN_PROP, MIN_DOMAIN
+from defaults import TRAIN_PROP, MIN_DOMAIN, MAX_CHUNK_SIZE
 from defaults import MAX_NGRAM_ORDER, TOP_DOC_FREQ, NUM_BUCKETS, CHUNKSIZE, SAMPLE_SIZE
 from index import main as c_index
 from tokenize import main as c_tokenize
 from featureselect import main as c_featsel
+from scanner import main as c_scanner
+from model import main as c_model
 
 def main():
   parser = argparse.ArgumentParser()
@@ -90,7 +92,26 @@ def main():
 
   fs_p.add_argument("model", metavar='MODEL_DIR', help="read index and produce output in MODEL_DIR")
 
-  #####
+  #################
+  # Token Scanner #
+  #################
+  sc_p = subp.add_parser('scanner', help = "build document scanner used to tokenize test documents")
+  sc_p.set_defaults(func=c_scanner)
+
+  sc_p.add_argument("-o","--output", help="output scanner to OUTFILE", metavar="OUTFILE")
+  sc_p.add_argument("input", metavar="INPUT", help="build a scanner for INPUT. If input is a directory, read INPUT/PragerFeats")
+
+  ###################
+  # Model Generator #
+  ###################
+  mod_p = subp.add_parser('model', help = "build model to be used in linguini classifier")
+  mod_p.set_defaults(func=c_model)
+
+  mod_p.add_argument("-s", "--scanner", metavar='SCANNER', help="use SCANNER for feature counting")
+  mod_p.add_argument("-o", "--output", metavar='OUTPUT', help="output model to OUTPUT")
+  mod_p.add_argument("--chunksize", type=int, help='maximum chunk size (number of files)', default=MAX_CHUNK_SIZE)
+  mod_p.add_argument("--buckets", type=int, metavar='N', help="distribute features into N buckets", default=NUM_BUCKETS)
+  mod_p.add_argument("model", metavar='MODEL_DIR', help="read index and produce output in MODEL_DIR")
 
   args = parser.parse_args()
 
