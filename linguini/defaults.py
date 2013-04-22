@@ -11,3 +11,6 @@ SAMPLE_SIZE = 140 # size of sample in bytes for sampling-based tokenization
 
 # featureselect.py
 TOKENS_PER_ORDER = 15000 # number of tokens to consider for each order
+
+# model.py
+MAX_CHUNK_SIZE = 100 # maximum number of files to tokenize at once
