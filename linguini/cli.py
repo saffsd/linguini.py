@@ -14,6 +14,7 @@ from tokenize import main as c_tokenize
 from featureselect import main as c_featsel
 from scanner import main as c_scanner
 from model import main as c_model
+from detect import main as c_detect
 
 def main():
   parser = argparse.ArgumentParser()
@@ -73,7 +74,7 @@ def main():
   tk_g.add_argument("--words", action="store_true",
       help="include words (for Prager tokenization)")
 
-  group = parser.add_argument_group('sampling')
+  group = tk_g.add_argument_group('sampling')
   group.add_argument("--sample_size", type=int, default=SAMPLE_SIZE,
       help="size of sample for sampling-based tokenization")
   group.add_argument("--sample_count", type=int, default=None,
@@ -112,6 +113,14 @@ def main():
   mod_p.add_argument("--chunksize", type=int, help='maximum chunk size (number of files)', default=MAX_CHUNK_SIZE)
   mod_p.add_argument("--buckets", type=int, metavar='N', help="distribute features into N buckets", default=NUM_BUCKETS)
   mod_p.add_argument("model", metavar='MODEL_DIR', help="read index and produce output in MODEL_DIR")
+
+  #####################
+  # Language Detector #
+  #####################
+  det_p = subp.add_parser('detect', help = "apply linguini")
+  det_p.set_defaults(func=c_detect)
+
+  det_p.add_argument("-m", "--model", help="read model from")
 
   args = parser.parse_args()
 
