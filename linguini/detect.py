@@ -9,6 +9,7 @@ import numpy as np
 import logging
 
 from collections import defaultdict
+from itertools import combinations
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +31,22 @@ class Linguini(object):
 
     return cls(ilf, lprot, langs, tk_nextmove, tk_output, *args, **kwargs)
 
-  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output):
+  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output, topn=5):
     self.ilf = ilf
     self.lprot = lprot
     self.langs = langs
     self.tk_nextmove = tk_nextmove
     self.tk_output = tk_output
 
+    # scalar products between all the language prototypes
+    self.ldot = lprot.dot(lprot.T)
+
     self.n_langs, self.n_feats = lprot.shape
+    self.topn = topn
+
+    logger.debug("initialized a Linguini instance")
+    logger.debug("n_langs={0} n_feats={1} topn={2}".format(self.n_langs, self.n_feats, self.topn))
+
 
   def instance2fv(self, text):
     """
@@ -73,20 +82,48 @@ class Linguini(object):
   def detect(self, text):
     logger.debug("detect on an instance of len {0}".format(len(text)))
     fv = self.instance2fv(text)
-    vector_len = np.sqrt(fv.dot(fv)) 
-    fv /= vector_len # TODO: This may not be neccessary for ranking candidate langs
-    lang_index = self.lprot.dot(fv).argmax()
-    lang = self.langs[lang_index]
-    return lang
+    #vector_len = np.sqrt(fv.dot(fv)) 
+    #fv /= vector_len # TODO: This may not be neccessary for ranking candidate langs
+    #lang_index = self.lprot.dot(fv).argmax()
+    #fv = self.lprot[12] # FOR TESTING OMLY
+    fdot = self.lprot.dot(fv) 
+    lang_order = np.arange(self.n_langs)[fdot.argsort()]
+
+    best = {lang_order[-1] : 1.0}
+    best_score = fdot[lang_order[-1]]
+
+    candidates = lang_order[::-1][:self.topn]
+    for l1, l2 in combinations(candidates, 2):
+      fifj = self.ldot[l1,l2]
+
+      # Alpha can be outside the range 0-1. This simply indicates that the projection
+      # of d onto the fi-fj plane is not between fi and fj.
+      alpha_num =  fdot[l1] - fdot[l2] * fifj 
+      alpha_den = (1. - fifj) * (fdot[l1] + fdot[l2])
+      alpha = alpha_num / alpha_den
+      #logger.debug("alpha[{0},{1}]: {2:.2f} / {3:.2f} = {4:.2f}".format(self.langs[l1], self.langs[l2], alpha_num, alpha_den, alpha))
+
+      dk = alpha * fdot[l1] + (1-alpha) * fdot[l2]
+      score = dk / (alpha * alpha + 2 * alpha * (1.-alpha) * fifj + (1-alpha) * (1-alpha) )
+
+      if score > best_score:
+        new_best = { l1:alpha, l2:(1-alpha)}
+
+        logger.debug("replacing {0}({1}) with {2}({3})".format([self.langs[c] for c in best], best_score, [self.langs[c] for c in new_best], score))
+        best_score = score
+        best = new_best
+    
+    retval = dict( (self.langs[c],best[c]) for c in best )
+    return retval 
 
 
 import sys
 def main(args):
   logger.info("reading model from: {0}".format(args.model))
-  x = Linguini.from_modelpath(args.model)
+  identifier = Linguini.from_modelpath(args.model, topn=args.topn)
 
   def _process(text):
-    return x.detect(text)
+    return identifier.detect(text)
 
   if sys.stdin.isatty():
     # Interactive mode
@@ -98,7 +135,7 @@ def main(args):
       print _process(text)
   else:
     # Redirected
-    if options.line:
+    if args.line:
       for line in sys.stdin.readlines():
         print _process(line)
     else:

@@ -154,6 +154,7 @@ def learn_ftc(paths, tk_nextmove, tk_output, cm, temp_path, args):
   write_count = sum(pass_tokenize_out)
   logger.info("wrote a total of %d keys", write_count)
 
+  # TODO: Report on the progress of this pass
   pass_ftc_params = (cm, num_instances)
   with MapPool(args.jobs, setup_pass_ftc, pass_ftc_params) as f:
     pass_ftc_out = f(pass_ftc, b_dirs)
