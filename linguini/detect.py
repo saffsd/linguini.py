@@ -133,6 +133,8 @@ class Linguini(object):
       Y = fdot[l2]
       Z = fdot[l3]
 
+      # The formulations of a and g were obtained using sympy to solve the simultaneous equations 
+      # described by Prager (1999)
       a_num = (-A*B*Z + A*Y + B**2*X - B*C*Y + C*Z - X)
       a_den = (A**2*Z - A*B*X - A*B*Z - A*C*Y - A*C*Z + A*X + A*Y + B**2*X - B*C*X - B*C*Y + B*Y + B*Z + C**2*Y + C*X + C*Z - X - Y - Z)
       a = a_num / a_den
