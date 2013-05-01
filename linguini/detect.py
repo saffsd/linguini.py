@@ -31,12 +31,13 @@ class Linguini(object):
 
     return cls(ilf, lprot, langs, tk_nextmove, tk_output, *args, **kwargs)
 
-  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output, topn=5):
+  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output, topn=5, detect_multilingual=True):
     self.ilf = ilf
     self.lprot = lprot
     self.langs = langs
     self.tk_nextmove = tk_nextmove
     self.tk_output = tk_output
+    self.detect_multilingual = detect_multilingual
 
     # scalar products between all the language prototypes
     self.ldot = lprot.dot(lprot.T)
@@ -92,74 +93,77 @@ class Linguini(object):
     best = {lang_order[-1] : 1.0}
     best_score = fdot[lang_order[-1]]
 
-    candidates = lang_order[::-1][:self.topn]
-    # Consider 2-lang combinations of the topn candidates
-    for l1, l2 in combinations(candidates, 2):
-      A = self.ldot[l1,l2]
-      X = fdot[l1]
-      Y = fdot[l2]
+    if not self.detect_multilingual:
+      logger.debug("skipping test for multilinguality")
+    else:
+      candidates = lang_order[::-1][:self.topn]
+      # Consider 2-lang combinations of the topn candidates
+      for l1, l2 in combinations(candidates, 2):
+        A = self.ldot[l1,l2]
+        X = fdot[l1]
+        Y = fdot[l2]
 
-      # Alpha can be outside the range 0-1. This simply indicates that the projection
-      # of d onto the fi-fj plane is not between fi and fj.
-      a_num =  X - Y * A 
-      a_den = (1 - A) * (X + Y)
-      a = a_num / a_den
-      #logger.debug("a[{0},{1}]: {2:.2f} / {3:.2f} = {4:.2f}".format(self.langs[l1], self.langs[l2], a_num, a_den, a))
+        # Alpha can be outside the range 0-1. This simply indicates that the projection
+        # of d onto the fi-fj plane is not between fi and fj.
+        a_num =  X - Y * A 
+        a_den = (1 - A) * (X + Y)
+        a = a_num / a_den
+        #logger.debug("a[{0},{1}]: {2:.2f} / {3:.2f} = {4:.2f}".format(self.langs[l1], self.langs[l2], a_num, a_den, a))
 
-      dk = a * X + (1-a) * Y
-      kmag = np.sqrt(a * a + 2 * a * (1-a) * A + (1-a) * (1-a) )
+        dk = a * X + (1-a) * Y
+        kmag = np.sqrt(a * a + 2 * a * (1-a) * A + (1-a) * (1-a) )
 
-      ## Only for validation of the implementation
-      #k = a * self.lprot[l1] + (1-a) * self.lprot[l2]
-      #dk_alt = fv.dot(k)
-      #kmag_alt = np.sqrt(k.dot(k))
-      #print "ORD2", "DK", dk, "DKALT", dk_alt, "KMAG", kmag, "KMAGALT", kmag_alt
+        ## Only for validation of the implementation
+        #k = a * self.lprot[l1] + (1-a) * self.lprot[l2]
+        #dk_alt = fv.dot(k)
+        #kmag_alt = np.sqrt(k.dot(k))
+        #print "ORD2", "DK", dk, "DKALT", dk_alt, "KMAG", kmag, "KMAGALT", kmag_alt
 
-      score = dk / kmag
+        score = dk / kmag
 
-      if 0 < a < 1 and score > best_score:
-        new_best = { l1:a, l2:(1-a)}
+        if 0 < a < 1 and score > best_score:
+          new_best = { l1:a, l2:(1-a)}
 
-        logger.debug("replacing {0}({1}) with {2}({3})".format([self.langs[c] for c in best], best_score, [self.langs[c] for c in new_best], score))
-        best_score = score
-        best = new_best
+          logger.debug("replacing {0}({1}) with {2}({3})".format([self.langs[c] for c in best], best_score, [self.langs[c] for c in new_best], score))
+          best_score = score
+          best = new_best
 
-    # Consider 3-lang combinations of the topn candidates
-    for l1, l2, l3 in combinations(candidates, 3):
-      A = self.ldot[l1,l2]
-      B = self.ldot[l2,l3]
-      C = self.ldot[l1,l3]
-      X = fdot[l1]
-      Y = fdot[l2]
-      Z = fdot[l3]
+      # Consider 3-lang combinations of the topn candidates
+      for l1, l2, l3 in combinations(candidates, 3):
+        A = self.ldot[l1,l2]
+        B = self.ldot[l2,l3]
+        C = self.ldot[l1,l3]
+        X = fdot[l1]
+        Y = fdot[l2]
+        Z = fdot[l3]
 
-      # The formulations of a and g were obtained using sympy to solve the simultaneous equations 
-      # described by Prager (1999)
-      a_num = (-A*B*Z + A*Y + B**2*X - B*C*Y + C*Z - X)
-      a_den = (A**2*Z - A*B*X - A*B*Z - A*C*Y - A*C*Z + A*X + A*Y + B**2*X - B*C*X - B*C*Y + B*Y + B*Z + C**2*Y + C*X + C*Z - X - Y - Z)
-      a = a_num / a_den
+        # The formulations of a and g were obtained using sympy to solve the simultaneous equations 
+        # described by Prager (1999)
+        a_num = (-A*B*Z + A*Y + B**2*X - B*C*Y + C*Z - X)
+        a_den = (A**2*Z - A*B*X - A*B*Z - A*C*Y - A*C*Z + A*X + A*Y + B**2*X - B*C*X - B*C*Y + B*Y + B*Z + C**2*Y + C*X + C*Z - X - Y - Z)
+        a = a_num / a_den
 
-      g_num =(C + 1 - (X + Z)*(A*C - B)/((C - 1)*(X*(A - B)/(C - 1) + Y)))
-      g_den =(-A - B + C + 1 + (X + Z)*((A - B)*(A - C) - (B - 1)*(C - 1))/((C - 1)*(X*(A - B)/(C - 1) + Y)))
-      g = g_num/g_den 
+        g_num =(C + 1 - (X + Z)*(A*C - B)/((C - 1)*(X*(A - B)/(C - 1) + Y)))
+        g_den =(-A - B + C + 1 + (X + Z)*((A - B)*(A - C) - (B - 1)*(C - 1))/((C - 1)*(X*(A - B)/(C - 1) + Y)))
+        g = g_num/g_den 
 
-      dk = a * fdot[l1] + g * fdot[l2] + (1 - a - g) * fdot[l3]
-      kmag = np.sqrt( a**2 + g**2 + (1-a-g)**2 + 2*(a*g*A + a*(1-a-g)*C + g*(1-a-g)*B) )
+        dk = a * fdot[l1] + g * fdot[l2] + (1 - a - g) * fdot[l3]
+        kmag = np.sqrt( a**2 + g**2 + (1-a-g)**2 + 2*(a*g*A + a*(1-a-g)*C + g*(1-a-g)*B) )
 
-      #k = a * self.lprot[l1] + g * self.lprot[l2] + (1-a-g) * self.lprot[l3]
-      #dk_alt = fv.dot(k)
-      #kmag_alt = np.sqrt(k.dot(k))
-      #print "ORD3", "DK", dk - dk_alt, "KMAG", kmag - kmag_alt
+        #k = a * self.lprot[l1] + g * self.lprot[l2] + (1-a-g) * self.lprot[l3]
+        #dk_alt = fv.dot(k)
+        #kmag_alt = np.sqrt(k.dot(k))
+        #print "ORD3", "DK", dk - dk_alt, "KMAG", kmag - kmag_alt
 
-      score = dk / kmag
-      #logger.debug("considering {0},{1},{2}: a={3} g={4} score={5}".format(l1,l2,l3,a,g,score))
+        score = dk / kmag
+        #logger.debug("considering {0},{1},{2}: a={3} g={4} score={5}".format(l1,l2,l3,a,g,score))
 
-      if (0 < a < 1) and (0 < g < 1) and (0 < (1-a-g) < 1) and score > best_score:
-        new_best = { l1:a, l2:g, l3:(1-a-g) }
+        if (0 < a < 1) and (0 < g < 1) and (0 < (1-a-g) < 1) and score > best_score:
+          new_best = { l1:a, l2:g, l3:(1-a-g) }
 
-        logger.debug("replacing {0}({1}) with {2}({3})".format([self.langs[c] for c in best], best_score, [self.langs[c] for c in new_best], score))
-        best_score = score
-        best = new_best
+          logger.debug("replacing {0}({1}) with {2}({3})".format([self.langs[c] for c in best], best_score, [self.langs[c] for c in new_best], score))
+          best_score = score
+          best = new_best
     
     retval = dict( (self.langs[c],best[c]) for c in best )
     return retval 
@@ -168,7 +172,7 @@ class Linguini(object):
 import sys
 def main(args):
   logger.info("reading model from: {0}".format(args.model))
-  identifier = Linguini.from_modelpath(args.model, topn=args.topn)
+  identifier = Linguini.from_modelpath(args.model, topn=args.topn, detect_multilingual=args.multilingual)
 
   def _process(text):
     return identifier.detect(text)

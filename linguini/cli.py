@@ -122,6 +122,7 @@ def main():
 
   det_p.add_argument("-m", "--model", help="read model from")
   det_p.add_argument("-t", "--topn", type=int, default=5, help ="consider the top N languages for multilinguality")
+  det_p.add_argument("--multilingual", action="store_true", help ="detect multilingual documents")
   det_p.add_argument("--line", action="store_true", help ="apply langid line-by-line")
 
   args = parser.parse_args()
