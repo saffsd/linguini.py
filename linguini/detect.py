@@ -7,6 +7,8 @@ Marco Lui, April 2013
 import base64, bz2, cPickle
 import numpy as np
 import logging
+import sys
+import pkgutil 
 
 from collections import defaultdict
 from itertools import combinations
@@ -16,13 +18,18 @@ logger = logging.getLogger(__name__)
 class Linguini(object):
 
   @classmethod
+  def from_package(cls, name, *args, **kwargs):
+    modelstr = pkgutil.get_data('linguini','models/'+name)
+    return cls.from_modelstring(modelstr, *args, **kwargs)
+   
+  @classmethod
   def from_modelpath(cls, path, *args, **kwargs):
     with open(path) as f:
       return cls.from_modelstring(f.read(), *args, **kwargs)
 
   @classmethod
   def from_modelstring(cls, string, *args, **kwargs):
-    model = cPickle.loads(bz2.decompress(base64.b64decode(string)))
+    model = cPickle.loads(bz2.decompress(base64.b64decode(string))) 
     ilf, lprot, langs, tk_nextmove, tk_output = model
 
     # convert to np arrays
@@ -169,10 +176,14 @@ class Linguini(object):
     return retval 
 
 
-import sys
 def main(args):
-  logger.info("reading model from: {0}".format(args.model))
-  identifier = Linguini.from_modelpath(args.model, topn=args.topn, detect_multilingual=args.multilingual)
+  # TODO: Tweak interface to allow for specifying multiple files at the commandline, and to provide CSV output
+  if args.model:
+    logger.info("reading model from: {0}".format(args.model))
+    identifier = Linguini.from_modelpath(args.model, topn=args.topn, detect_multilingual=args.multilingual)
+  else:
+    logger.info("using default model")
+    identifier = Linguini.from_package('default', topn=args.topn, detect_multilingual=args.multilingual)
 
   def _process(text):
     return identifier.detect(text)
