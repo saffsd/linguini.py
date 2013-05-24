@@ -221,7 +221,15 @@ def main(args):
   paths = zip(*items)[1]
   cm = generate_cm(items, len(langs))
   ftc = learn_ftc(paths, tk_nextmove, tk_output, cm, temp_path, args)
-  ilf = array.array('d', 1. / (ftc > 0).sum(axis=1))
+
+  # use only feats that appear in at least one lang
+  lang_freq = (ftc > 0).sum(axis=1) # num langs feat appears in
+  logger.debug("{0} feats ({1} used)".format(len(lang_freq), (lang_freq>0).sum()))
+  #ftc = ftc[lang_freq > 0] 
+  #lang_freq = lang_freq[lang_freq > 0]
+  with np.errstate(divide='ignore'):
+    ilf = 1. / lang_freq
+  ilf[np.isinf(ilf)] = 0 # set to 0 to effectively ignore these features
   
   # TF-IDF calculation with renormalization to unit vectors
   w = np.vstack([row / np.sqrt(row.dot(row)) for row in ftc.T * ilf])
@@ -231,6 +239,9 @@ def main(args):
 
   # ensure that langs is a list of Python strings
   langs = map(str,langs)
+
+  # ilf needs to be a python array
+  ilf = array.array('d', ilf)
 
   # output the model
   model = ilf, lprot, langs, tk_nextmove, tk_output
