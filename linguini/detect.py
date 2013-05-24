@@ -8,6 +8,7 @@ import base64, bz2, cPickle
 import numpy as np
 import logging
 import sys
+import json
 import pkgutil 
 
 from collections import defaultdict
@@ -38,13 +39,15 @@ class Linguini(object):
 
     return cls(ilf, lprot, langs, tk_nextmove, tk_output, *args, **kwargs)
 
-  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output, topn=5, detect_multilingual=True):
+  def __init__(self, ilf, lprot, langs, tk_nextmove, tk_output, topn=5, max_order=1):
+    if not (1<= max_order <=3):
+      raise ValueError, "only support document orders 1-3"
     self.ilf = ilf
     self.lprot = lprot
     self.langs = langs
     self.tk_nextmove = tk_nextmove
     self.tk_output = tk_output
-    self.detect_multilingual = detect_multilingual
+    self.max_order = max_order 
 
     # scalar products between all the language prototypes
     self.ldot = lprot.dot(lprot.T)
@@ -100,9 +103,8 @@ class Linguini(object):
     best = {lang_order[-1] : 1.0}
     best_score = fdot[lang_order[-1]]
 
-    if not self.detect_multilingual:
-      logger.debug("skipping test for multilinguality")
-    else:
+    if self.max_order >= 2:
+      logger.debug("considering bilingual combinations of top {0} langs".format(self.topn))
       candidates = lang_order[::-1][:self.topn]
       # Consider 2-lang combinations of the topn candidates
       for l1, l2 in combinations(candidates, 2):
@@ -135,6 +137,8 @@ class Linguini(object):
           best_score = score
           best = new_best
 
+    if self.max_order >= 3:
+      logger.debug("considering trilingual combinations of top {0} langs".format(self.topn))
       # Consider 3-lang combinations of the topn candidates
       for l1, l2, l3 in combinations(candidates, 3):
         A = self.ldot[l1,l2]
@@ -180,15 +184,29 @@ def main(args):
   # TODO: Tweak interface to allow for specifying multiple files at the commandline, and to provide CSV output
   if args.model:
     logger.info("reading model from: {0}".format(args.model))
-    identifier = Linguini.from_modelpath(args.model, topn=args.topn, detect_multilingual=args.multilingual)
+    identifier = Linguini.from_modelpath(args.model, topn=args.topn, max_order=args.max_order)
   else:
     logger.info("using default model")
-    identifier = Linguini.from_package('default', topn=args.topn, detect_multilingual=args.multilingual)
+    identifier = Linguini.from_package('default', topn=args.topn, max_order=args.max_order)
 
   def _process(text):
     return identifier.detect(text)
 
-  if sys.stdin.isatty():
+  
+  if args.docs:
+    logger.info( "processing {0} docs".format(len(args.docs)) )
+    logger.info( "writing output to: {0}".format(args.output) )
+
+    # TODO parallel setup. Timer.
+    for doc in args.docs:
+      with open(doc) as f:
+        record = { 'path':doc, 'langs':_process(f.read()) }
+      json.dump(record, args.output)
+      args.output.write('\n')
+
+
+  elif sys.stdin.isatty():
+    logger.debug("entering interactive mode")
     # Interactive mode
     while True:
       try:

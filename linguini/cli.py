@@ -6,6 +6,7 @@ Marco Lui, April 2013
 
 import argparse
 import logging
+import sys
 
 from defaults import TRAIN_PROP, MIN_DOMAIN, MAX_CHUNK_SIZE
 from defaults import MAX_NGRAM_ORDER, TOP_DOC_FREQ, NUM_BUCKETS, CHUNKSIZE, SAMPLE_SIZE
@@ -122,8 +123,10 @@ def main():
 
   det_p.add_argument("-m", "--model", help="read model from")
   det_p.add_argument("-t", "--topn", type=int, default=5, help ="consider the top N languages for multilinguality")
-  det_p.add_argument("--multilingual", action="store_true", help ="detect multilingual documents")
+  det_p.add_argument("-o", "--output", type=argparse.FileType('w'), default=sys.stdout, metavar="OUTFILE", help ="write output to OUTFILE(csv format)")
+  det_p.add_argument("--max_order", type=int, default=1, help ="maximum order of documents to detect (1 to 3)")
   det_p.add_argument("--line", action="store_true", help ="apply langid line-by-line")
+  det_p.add_argument('docs', metavar='FILE', help='files to process (interactive mode if blank)', nargs='*')
 
   args = parser.parse_args()
 
