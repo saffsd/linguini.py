@@ -89,8 +89,12 @@ def main():
 
   fs_p.add_argument("-f","--features", metavar='FEATURE_FILE', 
       help="output features to FEATURE_FILE")
-  fs_p.add_argument("-k", type=float, default=0.4,
-      help="feature inclusion threshold")
+
+  fs_type = fs_p.add_mutually_exclusive_group(required=True)
+  fs_type.add_argument("-k", type=float,
+      help="K value for Prager-style feature selection")
+  fs_type.add_argument("-c", "--count", type=int,
+      help="Count for top-N feature selection using Prager-style TFILF metric")
 
   fs_p.add_argument("model", metavar='MODEL_DIR', help="read index and produce output in MODEL_DIR")
 
