@@ -43,7 +43,7 @@ def main():
       help="use LANG - can be specified multiple times (uses all langs found if not specified)")
   index_p.add_argument("--min_domain", type=int, default=MIN_DOMAIN,
       help="minimum number of domains a language must be present in" )
-  index_p.add_argument("corpus", help="read corpus from CORPUS_DIR", metavar="CORPUS_DIR")
+  index_p.add_argument("corpus", help="read corpus from CORPUS (interpret file as list of paths)", metavar="CORPUS")
 
   ################
   # Tokenization #
