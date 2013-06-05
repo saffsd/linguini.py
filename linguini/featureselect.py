@@ -96,8 +96,7 @@ def pass_select(bucket):
   # Compute the term-language frequency first
   term_lang_count = defaultdict(int)
   for path in os.listdir(bucket):
-    # Use the domain buckets as we expect less domains than languages
-    if path.endswith('.domain'):
+    if path.endswith('.lang'):
       for key, lang, value in unmarshal_iter(os.path.join(bucket,path)):
         term_lang_count[key, lang] += value
     
