@@ -15,6 +15,7 @@ import multiprocessing as mp
 import logging
 from collections import deque, defaultdict
 from contextlib import closing
+from itertools import compress
 
 from common import chunk, unmarshal_iter, read_features, index, MapPool
 from defaults import MAX_CHUNK_SIZE
@@ -230,15 +231,30 @@ def main(args):
   with np.errstate(divide='ignore'):
     ilf = 1. / lang_freq
   ilf[np.isinf(ilf)] = 0 # set to 0 to effectively ignore these features
-  
+
+  # It is possible for documents to not contain -any- of the selected features.
+  # It is also possible for all of the documents in a language to not contain any of the 
+  # features, particularly because the selection is TF-based. We hence have to discard
+  # languages for which we effectively have no training vectors.
+  nz = ftc.sum(axis=0) > 0
+  ftc = ftc[:,nz]
+
+  unused = list(compress(langs,np.logical_not(nz)))
+  if len(unused) > 0:
+    logger.warning("{0} unused classes: {1}".format(len(unused), unused))
+
   # TF-IDF calculation with renormalization to unit vectors
   w = np.vstack([row / np.sqrt(row.dot(row)) for row in ftc.T * ilf])
+
   lprot = array.array('d')
   for dist in w.tolist():
     lprot.extend(dist)
 
   # ensure that langs is a list of Python strings
-  langs = map(str,langs)
+  # and concurrently remove the unused classes
+  langs = map(str,compress(langs,nz))
+
+  assert len(langs) == w.shape[0]
 
   # ilf needs to be a python array
   ilf = array.array('d', ilf)
