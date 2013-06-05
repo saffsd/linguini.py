@@ -81,7 +81,6 @@ def tfilf_select(bucketlist, lang_count, count, jobs=None):
       # Keep selecting n-largest from the previous output and the new candidates
       features = heapq.nlargest(count, itertools.chain(features, feats))
       logger.debug( "processed bucket ({0}/{1})".format(i+1, len(bucketlist) ))
-      logger.debug("SELECTED: %s", str(features[:10]))
 
   return set( f for c,r,f in features )
 
