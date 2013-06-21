@@ -90,6 +90,18 @@ class Linguini(object):
     retval = arr * self.ilf
     return retval
 
+  def score(self, text):
+    """
+    Compute the cosine between the feature vector and each class
+    vector.
+    """
+    logger.debug("score on an instance of len {0}".format(len(text)))
+    fv = self.instance2fv(text)
+    fv /= np.sqrt((fv*fv).sum()) # normalize vector to len 1
+    fdot = self.lprot.dot(fv) 
+    retval = dict(zip(self.langs, fdot))
+    return retval
+
   def detect(self, text):
     logger.debug("detect on an instance of len {0}".format(len(text)))
     fv = self.instance2fv(text)
@@ -179,8 +191,7 @@ class Linguini(object):
     retval = dict( (self.langs[c],best[c]) for c in best )
     return retval 
 
-
-def main(args):
+def detect(args):
   # TODO: Tweak interface to allow for specifying multiple files at the commandline, and to provide CSV output
   if args.model:
     logger.info("reading model from: {0}".format(args.model))
@@ -188,10 +199,6 @@ def main(args):
   else:
     logger.info("using default model")
     identifier = Linguini.from_package('default', topn=args.topn, max_order=args.max_order)
-
-  def _process(text):
-    return identifier.detect(text)
-
   
   if args.docs:
     logger.info( "processing {0} docs".format(len(args.docs)) )
@@ -200,7 +207,7 @@ def main(args):
     # TODO parallel setup. Timer.
     for doc in args.docs:
       with open(doc) as f:
-        record = { 'path':doc, 'langs':_process(f.read()) }
+        record = { 'path':doc, 'langs':identifier.detect(f.read()) }
       json.dump(record, args.output)
       args.output.write('\n')
 
@@ -213,14 +220,31 @@ def main(args):
         text = raw_input(">>> ")
       except Exception:
         break
-      print _process(text)
+      print identifier.detect(text)
   else:
     # Redirected
     if args.line:
       for line in sys.stdin.readlines():
-        print _process(line)
+        print identifier.detect(line)
     else:
-      print _process(sys.stdin.read())
+      print identifier.detect(sys.stdin.read())
 
+def score(args):
+  # TODO: Tweak interface to allow for specifying multiple files at the commandline, and to provide CSV output
+  if args.model:
+    logger.info("reading model from: {0}".format(args.model))
+    identifier = Linguini.from_modelpath(args.model)
+  else:
+    logger.info("using default model")
+    identifier = Linguini.from_package('default')
+  
+  logger.info( "processing {0} docs".format(len(args.docs)) )
+  logger.info( "writing output to: {0}".format(args.output) )
 
+  # TODO parallel setup. Timer.
+  for doc in args.docs:
+    with open(doc) as f:
+      record = { 'path':doc, 'score':identifier.score(f.read()) }
+    json.dump(record, args.output)
+    args.output.write('\n')
 

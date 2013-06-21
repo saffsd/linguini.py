@@ -15,7 +15,7 @@ from tokenize import main as c_tokenize
 from featureselect import main as c_featsel
 from scanner import main as c_scanner
 from model import main as c_model
-from detect import main as c_detect
+from detect import detect as c_detect, score as c_score
 
 def main():
   parser = argparse.ArgumentParser()
@@ -132,7 +132,18 @@ def main():
   det_p.add_argument("--line", action="store_true", help ="apply langid line-by-line")
   det_p.add_argument('docs', metavar='FILE', help='files to process (interactive mode if blank)', nargs='*')
 
+  ######################
+  # Cosine Calculation #
+  ######################
+  cos_p = subp.add_parser('score', help = "calculate per-language scores for documents")
+  cos_p.set_defaults(func=c_score)
+
+  cos_p.add_argument("-m", "--model", help="read model from")
+  cos_p.add_argument("-o", "--output", type=argparse.FileType('w'), default=sys.stdout, metavar="OUTFILE", help ="write output to OUTFILE(csv format)")
+  cos_p.add_argument('docs', metavar='FILE', help='files to process (interactive mode if blank)', nargs='+')
+
   args = parser.parse_args()
+
 
 
   logging.basicConfig(level = logging.DEBUG if args.verbose else logging.WARNING)
