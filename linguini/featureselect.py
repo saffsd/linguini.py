@@ -82,7 +82,7 @@ def tfilf_select(bucketlist, lang_count, count, jobs=None):
       features = heapq.nlargest(count, itertools.chain(features, feats))
       logger.debug( "processed bucket ({0}/{1})".format(i+1, len(bucketlist) ))
 
-  return set( f for c,r,f in features )
+  return [ f for c,r,f in sorted(features,reverse=True) ]
 
 def setup_pass_tfilf(lang_count, count):
   global __lang_count, __count
